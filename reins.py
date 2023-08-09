@@ -24,23 +24,31 @@ class B1Control:
     while True:
       if self.stop_thread:
         break
-      udp.SetSend(cmd)
+      self.lock.acquire()
+      udp.SetSend(self.cmd)
+      self.lock.release()
       udp.Send()
       time.sleep(dt)
             
   def Start(self):
     print("Standing...")
+    self.lock.acquire()
     self.cmd.mode = 6 # stand
+    self.lock.release()
     time.sleep(4.0)
 
     print("Initializing...")
+    self.lock.acquire()
     self.cmd.mode = 1
+    self.lock.release()
     time.sleep(1.0)
 
     print("Enabling Walk Control...")
+    self.lock.acquire()
     self.cmd.mode = 2 # Walk
     self.cmd.gaitType = 1 # Trot
     self.cmd.speedLevel = 0 # Default
+    self.lock.release()
     time.sleep(1.0)
 
     print("Done")
@@ -48,6 +56,12 @@ class B1Control:
   def Stop(self):
     self.stop_thread = True
 
+  def SetCmdVel(x, yaw):
+    self.lock.acquire()
+    self.x = x
+    self.yaw = yaw    
+    self.lock.release()
+    
   def __init__(self):
     self.x = 0.0
     self.yaw = 0.0
