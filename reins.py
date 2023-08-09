@@ -25,11 +25,11 @@ class B1Control:
       if self.stop_thread:
         break
       self.lock.acquire()
-      udp.SetSend(self.cmd)
+      self.udp.SetSend(self.cmd)
       self.lock.release()
-      udp.Send()
+      self.udp.Send()
       time.sleep(dt)
-            
+
   def Start(self):
     print("Standing...")
     self.lock.acquire()
@@ -52,25 +52,25 @@ class B1Control:
     time.sleep(1.0)
 
     print("Done")
-      
+
   def Stop(self):
     self.stop_thread = True
 
   def SetCmdVel(x, yaw):
     self.lock.acquire()
     self.x = x
-    self.yaw = yaw    
+    self.yaw = yaw
     self.lock.release()
-    
+
   def __init__(self):
     self.x = 0.0
     self.yaw = 0.0
-    
+
     self.udp = sdk.UDP(HIGHLEVEL, 8080, "192.168.123.220", 8082)
 
     self.cmd = sdk.HighCmd()
     self.state = sdk.HighState()
-    self.udp.InitCmdData(cmd)
+    self.udp.InitCmdData(self.cmd)
 
     self.cmd.mode = 0
     self.cmd.gaitType = 0
