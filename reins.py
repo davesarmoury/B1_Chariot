@@ -3,17 +3,78 @@ import busio
 import time
 from adafruit_ads1x15.analog_in import AnalogIn
 import adafruit_ads1x15.ads1115 as ADS
+from threading import Thread, Lock
+import sys
+
+sys.path.append('unitree_legged_sdk/lib/python/arm64')
+import robot_interface as sdk
+
+HIGHLEVEL = 0xee
 
 right_relaxed = 1145
 right_pulled = 4100
 left_relaxed = 1122
 left_pulled = 4206
 
-i2c = busio.I2C(board.SCL, board.SDA)
+rate = 500       # 500hz
+dt = 1.0 / rate  # time between commands
 
-ads = ADS.ADS1115(i2c)
-right = AnalogIn(ads, ADS.P0)
-left = AnalogIn(ads, ADS.P1)
+class B1Control:
+  def Update(self):
+    while True:
+      if self.stop_thread:
+        break
+      udp.SetSend(cmd)
+      udp.Send()
+      time.sleep(dt)
+            
+  def Start(self):
+    print("Standing...")
+    self.cmd.mode = 6 # stand
+    time.sleep(4.0)
+
+    print("Initializing...")
+    self.cmd.mode = 1
+    time.sleep(1.0)
+
+    print("Enabling Walk Control...")
+    self.cmd.mode = 2 # Walk
+    self.cmd.gaitType = 1 # Trot
+    self.cmd.speedLevel = 0 # Default
+    time.sleep(1.0)
+
+    print("Done")
+      
+  def Stop(self):
+    self.stop_thread = True
+
+  def __init__(self):
+    self.x = 0.0
+    self.yaw = 0.0
+    
+    self.udp = sdk.UDP(HIGHLEVEL, 8080, "192.168.123.220", 8082)
+
+    self.cmd = sdk.HighCmd()
+    self.state = sdk.HighState()
+    self.udp.InitCmdData(cmd)
+
+    self.cmd.mode = 0
+    self.cmd.gaitType = 0
+    self.cmd.speedLevel = 0
+    self.cmd.footRaiseHeight = 0
+    self.cmd.bodyHeight = 0
+    self.cmd.euler = [0, 0, 0]
+    self.cmd.velocity = [0, 0]
+    self.cmd.yawSpeed = 0.0
+    self.cmd.reserve = 0
+
+    self.stop_thread = False
+    self.lock = Lock()
+    self.thread = Thread(target=self.Update, args=())
+    self.thread.daemon = True
+    self.thread.start()
+
+    print("B1 Control Started")
 
 def flip(in_val):
   return clamp ( ( in_val - 1.0 ) * -1.0 )
@@ -21,14 +82,26 @@ def flip(in_val):
 def clamp(val, min_val=0.0, max_val=1.0):
   return max(min_val, min(val, max_val))
 
-for i in range(1000):
-  r_val = flip( (right.value - right_relaxed) / (right_pulled - right_relaxed) )
-  l_val = flip( (left.value - left_relaxed) / (left_pulled - left_relaxed) )
+def main():
+  i2c = busio.I2C(board.SCL, board.SDA)
 
-  yaw_scale = r_val - l_val
-  x_scale = min(r_val, l_val)
+  ads = ADS.ADS1115(i2c)
+  right = AnalogIn(ads, ADS.P0)
+  left = AnalogIn(ads, ADS.P1)
 
-  print(x_scale, yaw_scale)
-  time.sleep(0.1)
+  B1 = B1Control()
+  B1.Start()
 
-print("done!")
+#  for i in range(1000):
+#    r_val = flip( (right.value - right_relaxed) / (right_pulled - right_relaxed) )
+#    l_val = flip( (left.value - left_relaxed) / (left_pulled - left_relaxed) )
+#
+#    yaw_scale = r_val - l_val
+#    x_scale = min(r_val, l_val)
+#
+#    print(x_scale, yaw_scale)
+#    time.sleep(0.1)
+
+  print("done!")
+
+main()
