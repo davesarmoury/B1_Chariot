@@ -11,10 +11,10 @@ import robot_interface as sdk
 
 HIGHLEVEL = 0xee
 
-right_relaxed = 1145
-right_pulled = 4100
-left_relaxed = 1122
-left_pulled = 4206
+right_relaxed = 7800
+right_pulled = 4900
+left_relaxed = 8100
+left_pulled = 5100
 
 rate = 500       # 500hz
 dt = 1.0 / rate  # time between commands
@@ -52,6 +52,17 @@ class B1Control:
     time.sleep(1.0)
 
     print("Done")
+
+  def Sit(self):
+    self.lock.acquire()
+    self.cmd.mode = 6
+    self.lock.release()
+    time.sleep(1.0)
+
+    self.lock.acquire()
+    self.cmd.mode = 5
+    self.lock.release()
+    time.sleep(2.0)
 
   def Stop(self):
     self.stop_thread = True
@@ -106,16 +117,28 @@ def main():
   B1 = B1Control()
   B1.Start()
 
-#  for i in range(1000):
-#    r_val = flip( (right.value - right_relaxed) / (right_pulled - right_relaxed) )
-#    l_val = flip( (left.value - left_relaxed) / (left_pulled - left_relaxed) )
-#
-#    yaw_scale = r_val - l_val
-#    x_scale = min(r_val, l_val)
-#
-#    print(x_scale, yaw_scale)
-#    time.sleep(0.1)
+  reins_reset = False
 
-  print("done!")
+  try:
+    while True:
+      r_val = flip( (right.value - right_relaxed) / (right_pulled - right_relaxed) )
+      l_val = flip( (left.value - left_relaxed) / (left_pulled - left_relaxed) )
+
+      if r_val <= 0.01 and l_val <= 0.01:
+        reins_reset = True
+
+      yaw_scale = r_val - l_val
+      x_scale = min(r_val, l_val)
+
+      if reins_reset:
+        print(x_scale, yaw_scale)
+
+      time.sleep(0.1)
+  except KeyboardInterrupt:
+    print("You are the weakest link...")
+
+    B1.Sit()
+    B1.Stop()
+    print("Goodbye")
 
 main()
