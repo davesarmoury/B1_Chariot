@@ -5,9 +5,12 @@ from adafruit_ads1x15.analog_in import AnalogIn
 import adafruit_ads1x15.ads1115 as ADS
 from threading import Thread, Lock
 import sys
+import RPi.GPIO as GPIO
 
 sys.path.append('unitree_legged_sdk/lib/python/arm64')
 import robot_interface as sdk
+
+enable_pin = 'GP113_PWM7'  # BCM pin 12
 
 HIGHLEVEL = 0xee
 
@@ -67,10 +70,10 @@ class B1Control:
   def Stop(self):
     self.stop_thread = True
 
-  def SetCmdVel(x, yaw):
+  def SetCmdVel(self, x, yaw):
     self.lock.acquire()
-    self.x = x
-    self.yaw = yaw
+    self.cmd.velocity = [x, 0.0]
+    self.cmd.yawSpeed = yaw
     self.lock.release()
 
   def __init__(self):
@@ -108,6 +111,9 @@ def clamp(val, min_val=0.0, max_val=1.0):
   return max(min_val, min(val, max_val))
 
 def main():
+  GPIO.setmode(GPIO.TEGRA_SOC)
+  GPIO.setup(enable_pin, GPIO.IN)
+
   i2c = busio.I2C(board.SCL, board.SDA)
 
   ads = ADS.ADS1115(i2c)
@@ -124,21 +130,32 @@ def main():
       r_val = flip( (right.value - right_relaxed) / (right_pulled - right_relaxed) )
       l_val = flip( (left.value - left_relaxed) / (left_pulled - left_relaxed) )
 
-      if r_val <= 0.01 and l_val <= 0.01:
+      if r_val <= 0.01 and l_val <= 0.01 and not reins_reset:
+        print("Reset!")
         reins_reset = True
 
       yaw_scale = r_val - l_val
       x_scale = min(r_val, l_val)
 
-      if reins_reset:
-        print(x_scale, yaw_scale)
+      enable = GPIO.input(enable_pin)
+
+      if reins_reset and enable:
+        B1.SetCmdVel(x_scale, yaw_scale)
+      else:
+        B1.SetCmdVel(0.0, 0.0)
 
       time.sleep(0.1)
   except KeyboardInterrupt:
     print("You are the weakest link...")
 
-    B1.Sit()
+#    B1.Sit()
     B1.Stop()
+    GPIO.cleanup()
     print("Goodbye")
 
+bcm_to_tegra = {
+k: list(GPIO.gpio_pin_data.get_data()[-1]['TEGRA_SOC'].keys())[i] for i, k in enumerate(GPIO.gpio_pin_data.get_data()[-1]['BCM'])}
+
+for k, v in bcm_to_tegra.items():
+  print('bcm #:', k, 'tegra:', v)
 main()

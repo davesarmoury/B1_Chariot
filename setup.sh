@@ -11,5 +11,6 @@ sudo usermod -a -G gpio $USER
 cd ~
 git clone https://github.com/NVIDIA/jetson-gpio.git
 sudo cp ~/jetson-gpio/lib/python/Jetson/GPIO/99-gpio.rules /etc/udev/rules.d
+rm -rf jetson-gpio
 
 pip3 install adafruit-circuitpython-ads1x15
