@@ -10,6 +10,9 @@ import RPi.GPIO as GPIO
 sys.path.append('unitree_legged_sdk/lib/python/arm64')
 import robot_interface as sdk
 
+x_max = 1.2
+yaw_max = 0.75
+
 enable_pin = 'GP113_PWM7'  # BCM pin 12
 
 HIGHLEVEL = 0xee
@@ -140,7 +143,7 @@ def main():
       enable = GPIO.input(enable_pin)
 
       if reins_reset and enable:
-        B1.SetCmdVel(x_scale, yaw_scale)
+        B1.SetCmdVel(x_scale * x_max, yaw_scale * yaw_max)
       else:
         B1.SetCmdVel(0.0, 0.0)
 
